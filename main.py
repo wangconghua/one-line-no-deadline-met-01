@@ -53,6 +53,37 @@ WORN_PREMISES = (
 )
 
 
+def check_spoken_sentence(text: str) -> None:
+    """Check the line reads as one clean spoken sentence.
+
+    A line meant to be said aloud must not stumble: no word repeated
+    anywhere in the sentence, no double punctuation (",," or ".." or
+    "!?" and the like), no comma directly before the final full stop,
+    and every word must be pronounceable letters/apostrophes only.
+    """
+    words = text.rstrip(".").split()
+    seen = set()
+    for word in words:
+        clean = word.strip(",").lower()
+        if not clean.isalpha() and "'" not in clean:
+            raise ValueError(f"entry contains a non-word token ({word!r})")
+        # Common glue words (and, the, of, ...) may repeat freely; a
+        # repeated content word is what makes a spoken line stumble.
+        if clean in ("and", "the", "a", "an", "of", "to", "it", "i",
+                     "my", "me", "on", "in", "is", "was"):
+            continue
+        if clean in seen:
+            raise ValueError(f"entry repeats a word ({clean!r})")
+        seen.add(clean)
+    for double in ("..", ",,", "!!", "??", "!?", "?.", ",."):
+        if double in text:
+            raise ValueError(f"entry has doubled punctuation ({double!r})")
+    if text.endswith(",."):
+        raise ValueError("entry must not put a comma before the full stop")
+    if len(words) < 5:
+        raise ValueError("entry is too short to be a spoken sentence")
+
+
 def validate(text: str) -> None:
     """Enforce the gate and the judge's brief before anything is written."""
     if not isinstance(text, str):
@@ -77,6 +108,7 @@ def validate(text: str) -> None:
         raise ValueError("entry must be a single sentence ending in '.'")
     if text.count(".") != 1:
         raise ValueError("entry must be exactly one sentence")
+    check_spoken_sentence(text)
     lowered = text.lower()
     for word in META_HUMOR_WORDS:
         if word in lowered:
